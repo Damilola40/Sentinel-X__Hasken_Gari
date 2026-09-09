@@ -32,6 +32,7 @@ class IncidentData(BaseModel):
     status: Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]
     location: Location
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
 class APIResponse(BaseModel, Generic[T]):
     success: bool

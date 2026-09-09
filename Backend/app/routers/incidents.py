@@ -17,14 +17,14 @@ def find_index_incident(id):
         if incident["id"] == id:
             return index
 
-@incidents_router.get("incidents", 
+@incidents_router.get("/incidents", 
             response_model=APIResponse[list[IncidentData]],
             status_code=status.HTTP_200_OK
             )
 def list_incidents():
     return APIResponse(success=True, message="Incidents Listed", data=db.incidents)
 
-@incidents_router.get("incidents/{id}", 
+@incidents_router.get("/incidents/{id}", 
             response_model=APIResponse[IncidentData],
             status_code=status.HTTP_200_OK
             )
@@ -37,7 +37,7 @@ def get_incident(id: str,):
 
 @incidents_router.post("/incidents", 
              response_model=APIResponse[IncidentData], 
-             status_code=status.HTTP_200_OK
+             status_code=status.HTTP_201_CREATED
              )
 def create_incident(incident_data: IncidentIn):
     new_incident = {
@@ -82,7 +82,8 @@ def update_incident(id: str, incident_data: IncidentIn):
                 "city": incident_data.location.city,
                 "state": incident_data.location.state
             },
-            "created_at": db.incidents[incident_index]["created_at"]
+            "created_at": db.incidents[incident_index]["created_at"],
+            "updated_at": datetime.now(timezone.utc)
         }
     db.incidents[incident_index] = updated_incident
     return APIResponse(success=True, message="Existing Incident Recorded", data=updated_incident)

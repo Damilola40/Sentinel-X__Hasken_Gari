@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from uuid import UUID
 from pydantic.alias_generators import to_camel
 from typing import Optional, Literal, Generic, TypeVar
 from datetime import datetime
@@ -24,7 +25,7 @@ class IncidentIn(BaseModel):
 class IncidentData(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-    id: str
+    id: UUID
     title: str
     description: str
     category: str
@@ -33,6 +34,13 @@ class IncidentData(BaseModel):
     location: Location
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+class IncidentPatch(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]] = None
+    location: Optional[Location] = None
 
 class APIResponse(BaseModel, Generic[T]):
     success: bool

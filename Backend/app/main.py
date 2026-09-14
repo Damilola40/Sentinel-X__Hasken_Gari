@@ -1,17 +1,17 @@
 from fastapi import FastAPI
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from app.routers import incidents_router
+from app.routers import incidents_router, auth_router, users_router
 import time
 from app.database import Base, engine
-from app.models.incident import Incident
-from app.models.user import User
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 app.include_router(incidents_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
 
 while True:
     try:

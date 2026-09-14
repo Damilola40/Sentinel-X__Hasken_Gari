@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel #, ConfigDict
 from uuid import UUID
-from pydantic.alias_generators import to_camel
+#from pydantic.alias_generators import to_camel
 from typing import Optional, Literal, Generic, TypeVar
 from datetime import datetime
 
@@ -14,17 +14,16 @@ class Location(BaseModel):
     state: str
 
 class IncidentIn(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
     title: str
     description: str
     category: str
     location: Location
     reporter_id: Optional[str] = None
 
-class IncidentData(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    class Config:
+        from_attributes = True
 
+class IncidentData(BaseModel):
     id: UUID
     title: str
     description: str
@@ -34,6 +33,9 @@ class IncidentData(BaseModel):
     location: Location
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    class Config:
+            from_attributesfrom_attributes = True
 
 class IncidentPatch(BaseModel):
     title: Optional[str] = None

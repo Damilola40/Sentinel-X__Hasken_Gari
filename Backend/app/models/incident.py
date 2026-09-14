@@ -20,7 +20,7 @@ class Incident(Base):
     state = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     reporter = relationship("User")
 
     @property

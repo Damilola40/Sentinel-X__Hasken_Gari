@@ -1,14 +1,19 @@
+"""Routes for creating, viewing, changing, and deleting incidents."""
+
 from fastapi import APIRouter, HTTPException, status, Response, Depends
-from app.schemas.incident import IncidentIn, IncidentData, IncidentPatch, APIResponse
-from app.models.incident import Incident
-from datetime import datetime, timezone
+
+from ..core.deps import get_current_user
+from .. schemas.incident import IncidentIn, IncidentData, IncidentPatch, APIResponse
+from .. models.incident import Incident
 import uuid
 from sqlalchemy.orm import Session
-from app.database import get_db
+from .. database import get_db
 
-incidents_router = APIRouter()
-#data = get_db.incident
-
+# Put all incident routes under the same URL and API tag.
+incidents_router = APIRouter(
+    prefix = "/incidents",
+    tags = ["Incidents"]
+)
 
 # Helper functions
 def find_incident(id):
@@ -21,23 +26,24 @@ def find_index_incident(id):
         if incident["id"] == id:
             return index
         
-## GET routers
-# GET all incidents
-@incidents_router.get("/incidents", 
+# Only signed-in users can view incidents.
+@incidents_router.get("/", 
             response_model=APIResponse[list[IncidentData]],
             status_code=status.HTTP_200_OK
             )
-def list_incidents(db: Session = Depends(get_db)):
+def list_incidents(db: Session = Depends(get_db),
+                    user_id: int = Depends(get_current_user)):
     incidents = db.query(Incident).all()
     return APIResponse(success=True, message="Incidents Listed", data=incidents)
 
-# GET incident by id
-@incidents_router.get("/incidents/{id}", 
+@incidents_router.get("/{id}", 
             response_model=APIResponse[IncidentData],
             status_code=status.HTTP_200_OK
             )
 
-def get_incident(id: str, db: Session = Depends(get_db)):
+def get_incident(id: str, db: Session = Depends(get_db), 
+                    user_id: int = Depends(get_current_user)):
+    # Check the ID before looking for the incident.
     try:
         incident_uuid = uuid.UUID(id)
     except ValueError:
@@ -50,13 +56,18 @@ def get_incident(id: str, db: Session = Depends(get_db)):
     
     return APIResponse(success=True, message="Incident Found", data=incident)
 
-# Incident POST router - create a new incident
-@incidents_router.post("/incidents",
+@incidents_router.post("/",
              response_model=APIResponse[IncidentData],
              status_code=status.HTTP_201_CREATED
              )
 
-def create_incident(incident_data: IncidentIn, db: Session = Depends(get_db)):
+def create_incident(incident_data: IncidentIn, 
+                    db: Session = Depends(get_db), 
+                    user_id: int = Depends(get_current_user)):
+
+    print(user_id)
+    
+    # Save the location details from the request.
     new_incident = Incident(
         title=incident_data.title,
         description=incident_data.description,
@@ -76,13 +87,14 @@ def create_incident(incident_data: IncidentIn, db: Session = Depends(get_db)):
     return APIResponse(success=True, message="New Incident Recorded!!!", data=new_incident)
 
 
-# Incident PATCH router - update an existing incident
-@incidents_router.patch("/incidents/{id}", 
+@incidents_router.patch("/{id}", 
             response_model=APIResponse[IncidentData],
             status_code=status.HTTP_200_OK
             )
 
-def update_incident(id: str, incident_data: IncidentPatch, db: Session = Depends(get_db)):
+def update_incident(id: str, incident_data: IncidentPatch, 
+                    db: Session = Depends(get_db), 
+                    user_id: int = Depends(get_current_user)):
     try:
         incident_uuid = uuid.UUID(id)
     except ValueError:
@@ -93,6 +105,7 @@ def update_incident(id: str, incident_data: IncidentPatch, db: Session = Depends
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail = f"incident with {id}, not found")
     
+    # Only change fields sent by the user.
     if incident_data.title is not None:
         incident.title = incident_data.title
     if incident_data.description is not None:
@@ -111,9 +124,9 @@ def update_incident(id: str, incident_data: IncidentPatch, db: Session = Depends
     return APIResponse(success=True, message="Existing Incident Recorded", data=incident)
 
 
-# Incident DELETE router - delete an existing incident
-@incidents_router.delete("/incidents/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_incident(id: str, db: Session = Depends(get_db)):
+@incidents_router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_incident(id: str, db: Session = Depends(get_db), 
+                    user_id: int = Depends(get_current_user)):
     try:
         incident_uuid = uuid.UUID(id)
     except ValueError:

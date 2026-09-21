@@ -1,6 +1,6 @@
-from pydantic import BaseModel #, ConfigDict
+from pydantic import BaseModel
 from uuid import UUID
-#from pydantic.alias_generators import to_camel
+from ..schemas.user import UserPatch
 from typing import Optional, Literal, Generic, TypeVar
 from datetime import datetime
 
@@ -18,7 +18,6 @@ class IncidentIn(BaseModel):
     description: str
     category: str
     location: Location
-    reporter_id: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -33,6 +32,7 @@ class IncidentData(BaseModel):
     location: Location
     created_at: datetime
     updated_at: Optional[datetime] = None
+    reporter: UserPatch
 
     class Config:
             from_attributesfrom_attributes = True
@@ -48,3 +48,42 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool
     message: str
     data: T
+
+class Meta(BaseModel):
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+    has_next_page: bool
+    has_previous_page: bool
+
+class NearbyLocation(BaseModel):
+    latitude: float
+    longitude: float
+    address: str
+
+class NearbyIncidentData(BaseModel):
+    id: UUID
+    title: str
+    category: str
+    severity: Optional[Literal["low", "medium", "high", "critical"]] = None
+    status: Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]
+    distance: float
+    location: NearbyLocation
+    created_at: datetime
+
+    class Config:
+                from_attributesfrom_attributes = True
+
+
+class MapLocation(BaseModel):
+    latitude: float
+    longitude: float
+
+class MapIncidentData(BaseModel):
+    id: UUID
+    title: str
+    category: str
+    severity: Optional[Literal["low", "medium", "high", "critical"]] = None
+    status: Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]
+    location: MapLocation

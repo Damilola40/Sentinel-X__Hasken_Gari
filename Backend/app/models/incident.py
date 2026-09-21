@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Enum, String, DateTime, Float, func, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-import uuid
 from sqlalchemy.orm import relationship
 from app.database import Base
+import uuid
 
 class Incident(Base):
     __tablename__ = "incidents"

@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from uuid import UUID
 from ..schemas.user import UserPatch
 from typing import Optional, Literal, Generic, TypeVar
@@ -19,10 +20,12 @@ class IncidentIn(BaseModel):
     category: str
     location: Location
 
-    class Config:
-        from_attributes = True
 
 class IncidentData(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, 
+                              from_attributes=True,
+                              populate_by_name=True)
+
     id: UUID
     title: str
     description: str
@@ -33,9 +36,6 @@ class IncidentData(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     reporter: UserPatch
-
-    class Config:
-            from_attributesfrom_attributes = True
 
 class IncidentPatch(BaseModel):
     title: Optional[str] = None
@@ -50,6 +50,8 @@ class APIResponse(BaseModel, Generic[T]):
     data: T
 
 class Meta(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     page: int
     limit: int
     total: int
@@ -63,6 +65,8 @@ class NearbyLocation(BaseModel):
     address: str
 
 class NearbyIncidentData(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     id: UUID
     title: str
     category: str
@@ -71,9 +75,6 @@ class NearbyIncidentData(BaseModel):
     distance: float
     location: NearbyLocation
     created_at: datetime
-
-    class Config:
-                from_attributesfrom_attributes = True
 
 
 class MapLocation(BaseModel):

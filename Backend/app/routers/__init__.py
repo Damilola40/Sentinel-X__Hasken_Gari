@@ -6,3 +6,5 @@ from app.routers.incidents import incidents_router
 from app.routers.auth import auth_router
 
 from app.routers.users import users_router
+
+from app.routers.dashboard import dashboard_router

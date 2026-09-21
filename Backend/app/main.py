@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from app.routers import incidents_router, auth_router, users_router
+from app.routers import incidents_router, auth_router, users_router, dashboard_router
 import time
 from app.database import Base, engine
 
@@ -12,6 +12,7 @@ app = FastAPI()
 app.include_router(incidents_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
 
 while True:
     try:

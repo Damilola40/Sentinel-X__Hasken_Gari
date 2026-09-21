@@ -43,7 +43,7 @@ def haversine_km(lat1, lon1, lat2, lon2) -> float:
 def list_incidents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    status_filter: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -63,26 +63,6 @@ def list_incidents(
 
     return APIResponse(success=True, message="Incidents retrieved successfully", data=incidents, meta=meta)
 
-# Get incidents by id
-@incidents_router.get("/{id}", 
-            response_model=APIResponse[IncidentData],
-            status_code=status.HTTP_200_OK
-            )
-
-def get_incident(id: str, db: Session = Depends(get_db), 
-                    current_user: int = Depends(get_current_user)):
-    # Check the ID before looking for the incident
-    try:
-        incident_uuid = uuid.UUID(id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid incident id format")
-    
-    incident = db.query(Incident).filter(Incident.id == incident_uuid).first()
-    if not incident:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
-                            detail = f"incident with {id}, not found")
-    
-    return APIResponse(success=True, message="Incident Found", data=incident)
 
 # Get incident by latitude, longitude and radius
 @incidents_router.get(
@@ -159,6 +139,28 @@ def map_incidents(
         return APIResponse(success=True, message="No incidents found within radius", data=[])
     
     return APIResponse(success=True, message=f"{len(map_data)} incident(s) found.", data=map_data)
+
+
+# Get incidents by id
+@incidents_router.get("/{id}", 
+            response_model=APIResponse[IncidentData],
+            status_code=status.HTTP_200_OK
+            )
+
+def get_incident(id: str, db: Session = Depends(get_db), 
+                    current_user: int = Depends(get_current_user)):
+    # Check the ID before looking for the incident
+    try:
+        incident_uuid = uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid incident id format")
+    
+    incident = db.query(Incident).filter(Incident.id == incident_uuid).first()
+    if not incident:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail = f"incident with {id}, not found")
+    
+    return APIResponse(success=True, message="Incident Found", data=incident)
 
 # Create new incident on the database
 @incidents_router.post("/",

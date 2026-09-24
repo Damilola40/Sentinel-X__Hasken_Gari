@@ -3,6 +3,7 @@ from pwdlib import PasswordHash
 import jwt
 from datetime import datetime, timedelta, timezone
 from .. schemas.user import TokenData
+from .. config import settings
 
 # Password Hasher
 password_hash = PasswordHash.recommended()
@@ -15,9 +16,9 @@ def get_password_hash(password):
     return password_hash.hash(password)
 
 # JWT Token
-SECRET_KEY = "5b5c9f0f6a6e6ab81fb0df92c3f93d27c46565d771044286f253cc25279e894b"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()

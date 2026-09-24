@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Response, Depends, Query
 from .. core.deps import get_current_user
-from .. schemas.incident import IncidentIn, IncidentData, IncidentPatch, APIResponse, NearbyIncidentData, MapIncidentData, Meta
+from ..schemas.common import APIResponse, Meta
+from .. schemas.incident import IncidentIn, IncidentData, IncidentPatch, NearbyIncidentData, MapIncidentData
 from .. models.incident import Incident
 from .. models.user import User
 from typing import Optional, List

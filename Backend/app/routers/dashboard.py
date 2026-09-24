@@ -2,10 +2,11 @@ from fastapi import APIRouter, HTTPException, status, Response, Depends, Query
 from .. core.deps import get_current_user
 from typing import Optional
 from datetime import datetime, timezone
-from ..models.incident import Incident
+from .. models.incident import Incident
 from .. models.user import User
-from ..schemas.incident import APIResponse, IncidentData
-from ..schemas.dashboard import Overview, SafetyStatus, DashboardData
+from .. schemas.incident import APIResponse, IncidentData
+from .. schemas.dashboard import Overview, SafetyStatus, DashboardData
+from .. routers.incidents import haversine_km
 from math import radians, sin, cos, asin, sqrt
 from sqlalchemy.orm import Session
 from .. database import get_db
@@ -29,14 +30,6 @@ def compute_safety_status(active_incidents: list[Incident]) -> SafetyStatus:
     if "high" in severities or len(active_incidents) >= 3:
         return SafetyStatus(level="caution", message="There are active incidents near your area.")
     return SafetyStatus(level="caution", message="Minor incidents reported nearby — stay alert.")
-
-def haversine_km(lat1, lon1, lat2, lon2) -> float:
-    """Distance between two lat/lng points in km."""
-    R = 6371
-    dlat = radians(lat2 - lat1)
-    dlon = radians(lon2 - lon1)
-    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-    return 2 * R * asin(sqrt(a))
 
 @dashboard_router.get("", response_model=APIResponse[DashboardData], status_code=status.HTTP_200_OK)
 def display_dashboard(

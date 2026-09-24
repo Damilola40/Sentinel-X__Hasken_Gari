@@ -2,10 +2,10 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from uuid import UUID
 from ..schemas.user import UserPatch
-from typing import Optional, Literal, Generic, TypeVar
+from typing import Optional, Literal
 from datetime import datetime
+from ..schemas.common import APIResponse, Meta
 
-T = TypeVar("T")
 
 class Location(BaseModel):
     latitude: float
@@ -44,20 +44,6 @@ class IncidentPatch(BaseModel):
     status: Optional[Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]] = None
     location: Optional[Location] = None
 
-class APIResponse(BaseModel, Generic[T]):
-    success: bool
-    message: str
-    data: T
-
-class Meta(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    page: int
-    limit: int
-    total: int
-    total_pages: int
-    has_next_page: bool
-    has_previous_page: bool
 
 class NearbyLocation(BaseModel):
     latitude: float

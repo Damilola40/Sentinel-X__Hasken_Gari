@@ -1,8 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-from typing import Literal, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Literal
+from ..schemas.common import APIResponse, Meta
 
 from .incident import IncidentData
 
@@ -23,8 +22,3 @@ class DashboardData(BaseModel):
     overview: Overview
     safety_status: SafetyStatus
     recent_incidents: list[IncidentData]
-
-class APIResponse(BaseModel, Generic[T]):
-    success: bool
-    message: str
-    data: T

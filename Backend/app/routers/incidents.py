@@ -1,13 +1,17 @@
 from fastapi import APIRouter, HTTPException, status, Response, Depends, Query
+from geoalchemy2.elements import WKTElement
+from typing import Optional, List
+# from math import radians, sin, cos, asin, sqrt
+from sqlalchemy import func
+from geoalchemy2 import Geography
+import uuid
+from sqlalchemy.orm import Session
+
 from .. core.deps import get_current_user
-from ..schemas.common import APIResponse, Meta
+from .. schemas.common import APIResponse, Meta
 from .. schemas.incident import IncidentIn, IncidentData, IncidentPatch, NearbyIncidentData, MapIncidentData
 from .. models.incident import Incident
 from .. models.user import User
-from typing import Optional, List
-from math import radians, sin, cos, asin, sqrt
-import uuid
-from sqlalchemy.orm import Session
 from .. database import get_db
 
 # Put all incident routes under the same URL and API tag.
@@ -27,13 +31,14 @@ def find_index_incident(id):
         if incident["id"] == id:
             return index
 
-def haversine_km(lat1, lon1, lat2, lon2) -> float:
-    """Distance between two lat/lng points in km."""
+# No longer used as POSTGIS has been setup
+"""def haversine_km(lat1, lon1, lat2, lon2) -> float:
+    #Distance between two lat/lng points in km.
     R = 6371
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
     a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-    return 2 * R * asin(sqrt(a))
+    return 2 * R * asin(sqrt(a))"""
         
 # Only signed-in users can view incidents.
 # Get all incidents
@@ -78,27 +83,41 @@ def get_nearby_incidents(
     radius: float = Query(10, gt=0, description="Radius in kilometers"),
     db: Session = Depends(get_db),
 ):
-    # Pull all incidents
-    incidents = db.query(Incident).all()
+    # 
+    point = func.ST_SetSRID(func.ST_MakePoint(longitude, latitude), 4326)
+    distance_m = func.ST_Distance(
+        func.cast(Incident.geom, Geography),
+        func.cast(point, Geography),
+    )
+
+    # 
+    results = (
+        db.query(Incident, distance_m.label("distance"))
+        .filter(func.ST_DWithin(
+            func.cast(Incident.geom, Geography),
+            func.cast(point, Geography),
+            radius * 1000,  # km -> meters
+        ))
+        .order_by(distance_m)
+        .all()
+    )
 
     nearby = []
-    for i in incidents:
-        distance = haversine_km(latitude, longitude, i.latitude, i.longitude)
-        if distance <= radius:
-            nearby.append({
-                "id": i.id,
-                "title": i.title,
-                "category": i.category,
-                "severity": i.severity,
-                "status": i.status,
-                "distance": round(distance, 2),
-                "location": {
-                    "latitude": i.latitude,
-                    "longitude": i.longitude,
-                    "address": i.address,
-                },
-                "created_at": i.created_at,
-            })
+    for incident, distance in results:
+        nearby.append({
+            "id": incident.id,
+            "title": incident.title,
+            "category": incident.category,
+            "severity": incident.severity,
+            "status": incident.status,
+            "distance": round(distance / 1000, 2),  # meters -> km
+            "location": {
+                "latitude": incident.location["latitude"],
+                "longitude": incident.location["longitude"],
+                "address": incident.location["address"],
+            },
+            "created_at": incident.created_at,
+        })
 
     if not nearby:
         return APIResponse(success=True, message="No incidents found within radius", data=[])
@@ -118,21 +137,29 @@ def map_incidents(
     radius: float = Query(20, gt=0, description="Radius in kilometers"),
     db: Session = Depends(get_db),
 ):
-    incidents = db.query(Incident).all()
+    point = func.ST_SetSRID(func.ST_MakePoint(longitude, latitude), 4326)
+    
+    results = (
+        db.query(Incident)
+        .filter(func.ST_DWithin(
+            func.cast(Incident.geom, Geography),
+            func.cast(point, Geography),
+            radius * 1000,  # km -> meters
+        ))
+        .all()
+    )
     
     map_data = []
-    for i in incidents:
-        distance = haversine_km(latitude, longitude, i.latitude, i.longitude)
-        if distance <= radius:
+    for incident in results:
             map_data.append({
-                "id": i.id,
-                "title": i.title,
-                "category": i.category,
-                "severity": i.severity,
-                "status": i.status,
+                "id": incident.id,
+                "title": incident.title,
+                "category": incident.category,
+                "severity": incident.severity,
+                "status": incident.status,
                 "location": {
-                    "latitude": i.latitude,
-                    "longitude": i.longitude,
+                    "latitude": incident.location["latitude"],
+                    "longitude": incident.location["longitude"],
                 },
             })
     
@@ -164,7 +191,7 @@ def get_incident(id: str, db: Session = Depends(get_db),
     return APIResponse(success=True, message="Incident Found", data=incident)
 
 # Create new incident on the database
-@incidents_router.post("/",
+@incidents_router.post("",
              response_model=APIResponse[IncidentData],
              status_code=status.HTTP_201_CREATED
              )
@@ -179,8 +206,10 @@ def create_incident(incident_data: IncidentIn,
         category=incident_data.category,
         status="reported",
         severity=None,
-        latitude=incident_data.location.latitude,
-        longitude=incident_data.location.longitude,
+        geom=WKTElement(
+            f"POINT({incident_data.location.longitude} {incident_data.location.latitude})",
+            srid=4326,
+        ),
         address=incident_data.location.address,
         city=incident_data.location.city,
         state=incident_data.location.state,
@@ -218,19 +247,21 @@ def update_incident(id: str, incident_data: IncidentPatch,
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="Not authorized to perform requested action")
     
-    # Only change fields sent by the user.
-    if incident_data.title is not None:
-        incident.title = incident_data.title
-    if incident_data.description is not None:
-        incident.description = incident_data.description
-    if incident_data.category is not None:
-        incident.category = incident_data.category
     if incident_data.location is not None:
-        incident.latitude = incident_data.location.latitude
-        incident.longitude = incident_data.location.longitude
-        incident.address = incident_data.location.address
-        incident.city = incident_data.location.city
-        incident.state = incident_data.location.state
+        loc = incident_data.location
+        current = incident.location  # existing @property — decodes current geom + reads address/city/state
+
+        if loc.latitude is not None or loc.longitude is not None:
+            new_lat = loc.latitude if loc.latitude is not None else current["latitude"]
+            new_lon = loc.longitude if loc.longitude is not None else current["longitude"]
+            incident.geom = WKTElement(f"POINT({new_lon} {new_lat})", srid=4326)
+
+        if loc.address is not None:
+            incident.address = loc.address
+        if loc.city is not None:
+            incident.city = loc.city
+        if loc.state is not None:
+            incident.state = loc.state
 
     db.commit()
     db.refresh(incident)

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, status, Depends, Query
 from typing import List
+from sqlalchemy.orm import Session
+
 from .. schemas.common import APIResponse, Meta
 from .. schemas.notification import NotificationData
 from .. core.deps import get_current_user
 from .. models.user import User
 from .. models.notification import Notification
-from sqlalchemy.orm import Session
 from .. database import get_db
 
 notification_router = APIRouter(

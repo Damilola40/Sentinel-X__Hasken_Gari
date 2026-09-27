@@ -2,6 +2,8 @@ from sqlalchemy import Column, Enum, String, DateTime, Float, func, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
+from geoalchemy2 import Geometry
+from geoalchemy2.shape import to_shape
 import uuid
 
 class Incident(Base):
@@ -13,8 +15,9 @@ class Incident(Base):
     category = Column(String, nullable=False)
     severity = Column(Enum("low", "medium", "high", "critical", name="incident_severity"), nullable=True)
     status = Column(Enum("reported", "verified", "resolved", "unverified", "in_progress", "rejected", name="incident_status"), nullable=False)
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
+    geom = Column("location", Geometry(geometry_type="POINT", srid=4326), nullable=False)
+    # latitude = Column(Float, nullable=False)
+    # longitude = Column(Float, nullable=False) POSTGIS has been setup these are replaced by location_geom
     address = Column(String, nullable=False)
     city = Column(String, nullable=False)
     state = Column(String, nullable=False)
@@ -23,12 +26,18 @@ class Incident(Base):
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     reporter = relationship("User")
 
+    # Commented out to properly handle backfill
+    # To use this change location to location_geom 
     @property
     def location(self):
+        point = to_shape(self.geom)
         return {
-            "latitude": self.latitude,
-            "longitude": self.longitude,
+            "latitude": point.y,
+            "longitude": point.x,
+            # "latitude": self.latitude,
+            # "longitude": self.longitude, PostGIS setup
             "address": self.address,
             "city": self.city,
             "state": self.state,
         }
+

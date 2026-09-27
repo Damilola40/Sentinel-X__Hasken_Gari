@@ -14,6 +14,16 @@ class Location(BaseModel):
     city: str
     state: str
 
+
+class LocationPatch(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+
 class IncidentIn(BaseModel):
     title: str
     description: str
@@ -42,7 +52,7 @@ class IncidentPatch(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     status: Optional[Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]] = None
-    location: Optional[Location] = None
+    location: Optional[LocationPatch] = None
 
 
 class NearbyLocation(BaseModel):

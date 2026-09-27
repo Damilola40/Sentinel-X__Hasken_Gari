@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException, status, Response, Depends, Query
-from .. core.deps import get_current_user
+from fastapi import APIRouter, status, Depends, Query
+from sqlalchemy import func
+from geoalchemy2 import Geography
 from typing import Optional
 from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+
+from .. core.deps import get_current_user
 from .. models.incident import Incident
 from .. models.user import User
 from .. schemas.incident import APIResponse, IncidentData
 from .. schemas.dashboard import Overview, SafetyStatus, DashboardData
-from .. routers.incidents import haversine_km
-from math import radians, sin, cos, asin, sqrt
-from sqlalchemy.orm import Session
 from .. database import get_db
 
 # Put all dashboard routes under the same URL and API tag.
@@ -39,15 +40,17 @@ def display_dashboard(
     radius: float = Query(10, gt=0),
     db: Session = Depends(get_db),
 ):
-    all_incidents = db.query(Incident).all()
+    query = db.query(Incident)
 
     if latitude is not None and longitude is not None:
-        scoped_incidents = [
-            i for i in all_incidents
-            if haversine_km(latitude, longitude, i.latitude, i.longitude) <= radius
-        ]
-    else:
-        scoped_incidents = all_incidents
+        point = func.ST_SetSRID(func.ST_MakePoint(longitude, latitude), 4326)
+        query = query.filter(func.ST_DWithin(
+            func.cast(Incident.geom, Geography),
+            func.cast(point, Geography),
+            radius * 1000,
+        ))
+
+    scoped_incidents = query.all()
 
     active_incidents = [i for i in scoped_incidents if i.status in ACTIVE_STATUSES]
 

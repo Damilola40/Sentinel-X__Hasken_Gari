@@ -10,3 +10,5 @@ from app.routers.users import users_router
 from app.routers.dashboard import dashboard_router
 
 from app.routers.notification import notification_router
+
+from app.routers.sms import sms_router

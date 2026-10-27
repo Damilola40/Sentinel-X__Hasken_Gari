@@ -1,10 +1,10 @@
 from fastapi import APIRouter, status, Depends
 from sqlalchemy.orm import Session
 
-from .. models.user import User
-from .. schemas.user import  UserData, UserPatch
-from .. core.deps import get_current_user
-from .. database import get_db
+from ..models.user import User
+from ..schemas.user import  UserData, UserPatch
+from ..core.deps import get_current_user
+from ..database import get_db
 
 users_router = APIRouter(
     prefix = "/users",

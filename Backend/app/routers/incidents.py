@@ -6,13 +6,18 @@ from sqlalchemy import func
 from geoalchemy2 import Geography
 import uuid
 from sqlalchemy.orm import Session
+import logging
 
-from .. core.deps import get_current_user
-from .. schemas.common import APIResponse, Meta
-from .. schemas.incident import IncidentIn, IncidentData, IncidentPatch, NearbyIncidentData, MapIncidentData
-from .. models.incident import Incident
-from .. models.user import User
-from .. database import get_db
+
+from ..core.deps import get_current_user
+from ..schemas.common import APIResponse, Meta
+from ..schemas.incident import IncidentIn, IncidentData, IncidentPatch, NearbyIncidentData, MapIncidentData
+from ..models.incident import Incident
+from ..models.user import User
+from ..database import get_db
+from ..ai.ai_config import AIConfig
+from ..ai.service import classify_report
+
 
 # Put all incident routes under the same URL and API tag.
 incidents_router = APIRouter(
@@ -30,6 +35,11 @@ def find_index_incident(id):
     for index, incident in enumerate(get_db().query(Incident).all()):
         if incident["id"] == id:
             return index
+
+logger = logging.getLogger(__name__)
+
+AI_CATEGORY_MIN_CONF = 0.60
+AI_SEVERITY_MIN_CONF = 0.60
 
 # No longer used as POSTGIS has been setup
 """def haversine_km(lat1, lon1, lat2, lon2) -> float:
@@ -52,7 +62,7 @@ def list_incidents(
     status_filter: Optional[str] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-):
+    ):
     query = db.query(Incident)
 
     if status_filter:
@@ -82,7 +92,7 @@ def get_nearby_incidents(
     longitude: float = Query(..., ge=-180, le=180, description="Center longitude"),
     radius: float = Query(10, gt=0, description="Radius in kilometers"),
     db: Session = Depends(get_db),
-):
+    ):
     # 
     point = func.ST_SetSRID(func.ST_MakePoint(longitude, latitude), 4326)
     distance_m = func.ST_Distance(
@@ -199,13 +209,31 @@ def get_incident(id: str, db: Session = Depends(get_db),
 def create_incident(incident_data: IncidentIn, 
                     db: Session = Depends(get_db), 
                     current_user: User = Depends(get_current_user)):
+    # Classify the incident using the AI model
+    try:
+        result = classify_report(title=incident_data.title, description=incident_data.description)
+        logger.info(f"AI Classification Result: {result}")  # Debugging line to check the classification result
+    except Exception:
+        logger.exception("AI classification failed")
+        result = None
+    
+    category = incident_data.category.strip().lower()
+    severity = None
+    if result:
+        if result["category_confidence"] >= AI_CATEGORY_MIN_CONF:
+            category = result["category"]
+        if result["severity_confidence"] >= AI_SEVERITY_MIN_CONF:
+            severity = result["severity"]
+    if category not in AIConfig.CATEGORIES:
+        category = "other"
+
     # Save the location details from the request.
     new_incident = Incident(
         title=incident_data.title,
         description=incident_data.description,
-        category=incident_data.category,
+        category=category,
         status="reported",
-        severity=None,
+        severity=severity,
         geom=WKTElement(
             f"POINT({incident_data.location.longitude} {incident_data.location.latitude})",
             srid=4326,
@@ -230,6 +258,12 @@ def create_incident(incident_data: IncidentIn,
 def update_incident(id: str, incident_data: IncidentPatch, 
                     db: Session = Depends(get_db), 
                     current_user: User = Depends(get_current_user)):
+
+    # Check if the user is authorized to update an incident
+    if current_user.role not in ["user", "admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Not authorized to perform requested action")
+    
     try:
         incident_uuid = uuid.UUID(id)
     except ValueError:
@@ -272,6 +306,11 @@ def update_incident(id: str, incident_data: IncidentPatch,
 
 def delete_incident(id: str, db: Session = Depends(get_db),
                     current_user: User = Depends(get_current_user)):
+
+    # Check if the user is authorized to delete an incident
+    if current_user.role not in ["user", "admin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Not authorized to perform requested action")
     try:
         incident_uuid = uuid.UUID(id)
     except ValueError:

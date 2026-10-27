@@ -1,9 +1,10 @@
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from uuid import UUID
-from ..schemas.user import UserPatch
 from typing import Optional, Literal
 from datetime import datetime
+
+from ..schemas.user import UserPatch
 from ..schemas.common import APIResponse, Meta
 
 
@@ -27,9 +28,8 @@ class LocationPatch(BaseModel):
 class IncidentIn(BaseModel):
     title: str
     description: str
-    category: str
+    category: Optional[str] = None
     location: Location
-
 
 class IncidentData(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, 
@@ -39,13 +39,12 @@ class IncidentData(BaseModel):
     id: UUID
     title: str
     description: str
-    category: str
+    category: Optional[str] = None
     severity: Optional[Literal["low", "medium", "high", "critical"]] = None
     status: Literal["reported", "verified", "resolved", "unverified", "in_progress", "rejected"]
     location: Location
     created_at: datetime
     updated_at: Optional[datetime] = None
-    reporter: UserPatch
 
 class IncidentPatch(BaseModel):
     title: Optional[str] = None

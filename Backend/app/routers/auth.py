@@ -3,10 +3,11 @@ from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from .. schemas.user import AppUserIn, UserData, Token
-from .. models.user import User
-from .. database import get_db
-from .. core.security import get_password_hash, verify_password, create_access_token
+from ..schemas.user import AppUserIn, UserData, Token
+from ..models.user import User
+from ..database import get_db
+from ..core.security import get_password_hash, verify_password, create_access_token
+from ..core.utils import normalize_phone_number
 
 auth_router = APIRouter(
     prefix = "/auth",
@@ -23,6 +24,9 @@ def register_user(user_data: AppUserIn, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(or_(User.email == user_data.email, User.phone_number == user_data.phone_number)).first()
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email or phone number already registered")
+
+    # Normalize the phone number
+    user_data.phone_number = normalize_phone_number(user_data.phone_number)
 
     # Create a new user instance
     new_user = User(

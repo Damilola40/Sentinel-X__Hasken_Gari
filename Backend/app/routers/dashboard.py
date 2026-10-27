@@ -5,12 +5,12 @@ from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
-from .. core.deps import get_current_user
-from .. models.incident import Incident
-from .. models.user import User
-from .. schemas.incident import APIResponse, IncidentData
-from .. schemas.dashboard import Overview, SafetyStatus, DashboardData
-from .. database import get_db
+from ..core.deps import get_current_user
+from ..models.incident import Incident
+from ..models.user import User
+from ..schemas.incident import APIResponse, IncidentData
+from ..schemas.dashboard import Overview, SafetyStatus, DashboardData
+from ..database import get_db
 
 # Put all dashboard routes under the same URL and API tag.
 dashboard_router = APIRouter(

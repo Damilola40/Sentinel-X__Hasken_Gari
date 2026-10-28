@@ -27,7 +27,7 @@ def get_notifications(
 ):
     query = db.query(Notification)
     query = query.filter(Notification.user_id == current_user.id)
-    query = query.order_by(Notification.created_at.desc())
+    query = query.order_by(Notification.created_at.desc(), Notification.id.desc())
 
     total = query.count()
     notifications = query.offset((page - 1) * limit).limit(limit).all()

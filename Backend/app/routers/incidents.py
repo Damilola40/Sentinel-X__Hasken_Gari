@@ -212,10 +212,12 @@ def create_incident(incident_data: IncidentIn,
     # Classify the incident using the AI model
     try:
         result = classify_report(title=incident_data.title, description=incident_data.description)
-        logger.info(f"AI Classification Result: {result}")  # Debugging line to check the classification result
+        logger.info(f"AI Classification Result: {result}")
     except Exception:
         logger.exception("AI classification failed")
         result = None
+
+    flagged = True
     
     category = incident_data.category.strip().lower()
     severity = None
@@ -224,7 +226,7 @@ def create_incident(incident_data: IncidentIn,
             category = result["category"]
         if result["severity_confidence"] >= AI_SEVERITY_MIN_CONF:
             severity = result["severity"]
-    if category not in AIConfig.CATEGORIES:
+        flagged = result["flagged_for_review"]
         category = "other"
 
     # Save the location details from the request.
@@ -241,12 +243,14 @@ def create_incident(incident_data: IncidentIn,
         address=incident_data.location.address,
         city=incident_data.location.city,
         state=incident_data.location.state,
-        reporter_id=current_user.id
+        reporter_id=current_user.id,
+        flagged_for_review=flagged
     )
 
     db.add(new_incident)
     db.commit()
     db.refresh(new_incident)
+    logger.info(f"New incident created with ID: {new_incident.id}, flagged_for_review: {flagged}")
     return APIResponse(success=True, message="New Incident Recorded!!!", data=new_incident)
 
 # Edit existing incident on the database

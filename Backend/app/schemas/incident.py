@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from uuid import UUID
 from typing import Optional, Literal
@@ -26,8 +26,10 @@ class LocationPatch(BaseModel):
     state: Optional[str] = None
 
 class IncidentIn(BaseModel):
-    title: str
-    description: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: str = Field(min_length = 12)
+    description: str = Field(min_length = 12)
     category: Optional[str] = None
     location: Location
 

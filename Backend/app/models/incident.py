@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Enum, String, DateTime, Float, func, ForeignKey
+from sqlalchemy import Column, Enum, String, DateTime, Boolean, func, ForeignKey, false
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -15,6 +15,7 @@ class Incident(Base):
     category = Column(String, nullable=False)
     severity = Column(Enum("low", "medium", "high", "critical", name="incident_severity"), nullable=True)
     status = Column(Enum("reported", "verified", "resolved", "unverified", "in_progress", "rejected", name="incident_status"), nullable=False)
+    flagged_for_review = Column(Boolean, default=False, server_default="false", nullable=False)
     geom = Column("location", Geometry(geometry_type="POINT", srid=4326), nullable=False)
     # latitude = Column(Float, nullable=False)
     # longitude = Column(Float, nullable=False) POSTGIS has been setup these are replaced by location_geom

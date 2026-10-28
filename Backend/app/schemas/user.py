@@ -11,6 +11,7 @@ class AppUserIn(BaseModel):
     phone_number:str
     email: EmailStr
     password: str
+    role: Optional[Literal["admin", "responder", "citizen"]] = "citizen"  # Default role is citizen
 
 
 class SmsUserIn(BaseModel):

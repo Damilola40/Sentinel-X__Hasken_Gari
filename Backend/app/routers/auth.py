@@ -34,7 +34,7 @@ def register_user(user_data: AppUserIn, db: Session = Depends(get_db)):
         phone_number=user_data.phone_number,
         email=user_data.email,
         password=get_password_hash(user_data.password),  # Hash the password before storing
-        role="citizen"  # Default role for new users
+        role=user_data.role
     )
 
     # Add the new user to the database

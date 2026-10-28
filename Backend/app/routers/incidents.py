@@ -14,6 +14,7 @@ from ..schemas.common import APIResponse, Meta
 from ..schemas.incident import IncidentIn, IncidentData, IncidentPatch, NearbyIncidentData, MapIncidentData
 from ..models.incident import Incident
 from ..models.user import User
+from ..models.notification import Notification
 from ..database import get_db
 from ..ai.ai_config import AIConfig
 from ..ai.service import classify_report
@@ -206,7 +207,7 @@ def get_incident(id: str, db: Session = Depends(get_db),
              status_code=status.HTTP_201_CREATED
              )
 
-def create_incident(incident_data: IncidentIn, 
+def create_incident(incident_data: IncidentIn,
                     db: Session = Depends(get_db), 
                     current_user: User = Depends(get_current_user)):
     # Classify the incident using the AI model
@@ -227,7 +228,8 @@ def create_incident(incident_data: IncidentIn,
         if result["severity_confidence"] >= AI_SEVERITY_MIN_CONF:
             severity = result["severity"]
         flagged = result["flagged_for_review"]
-        category = "other"
+
+    if category not in AIConfig.CATEGORIES: category = "other"
 
     # Save the location details from the request.
     new_incident = Incident(
@@ -250,6 +252,28 @@ def create_incident(incident_data: IncidentIn,
     db.add(new_incident)
     db.commit()
     db.refresh(new_incident)
+    
+    if flagged and current_user.role != "admin":
+        query = db.query(User).filter(User.role == "admin")
+        logger.warning(f"Incident {new_incident.id} flagged for review.")
+
+        for admin in query.all():
+            logger.info(f"Sending notification to admin {admin.id} for flagged incident {new_incident.id}.")
+            notification = Notification(
+                user_id=admin.id,
+                title="New Incident Flagged for Review",
+                message=f"New incident reported and flagged for review: {new_incident.title}",
+                type="incident_alert", # incidnt_alert, used for now
+                incident_id=new_incident.id,
+            )
+            db.add(notification)
+
+    try:
+        db.commit()
+    except Exception:
+        logger.exception("Failed to commit incident update")
+        db.rollback()
+
     logger.info(f"New incident created with ID: {new_incident.id}, flagged_for_review: {flagged}")
     return APIResponse(success=True, message="New Incident Recorded!!!", data=new_incident)
 
